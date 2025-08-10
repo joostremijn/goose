@@ -41,6 +41,7 @@ pub async fn agent_generator(
         builtins: requirements.builtin,
         extensions_override: None,
         additional_system_prompt: None,
+        system_prompt_file: None,
         settings: None,
         provider: None,
         model: None,

@@ -380,6 +380,15 @@ enum Command {
             value_delimiter = ','
         )]
         builtins: Vec<String>,
+
+        /// Path to file containing custom system prompt
+        #[arg(
+            long = "system-prompt",
+            value_name = "FILE",
+            help = "Path to file containing custom system prompt",
+            long_help = "Override the default system prompt with content from the specified file. This replaces the entire system prompt for the session."
+        )]
+        system_prompt_file: Option<PathBuf>,
     },
 
     /// Open the last project directory
@@ -604,6 +613,15 @@ enum Command {
             long_help = "Override the GOOSE_MODEL environment variable for this run. The model must be supported by the specified provider."
         )]
         model: Option<String>,
+
+        /// Path to file containing custom system prompt
+        #[arg(
+            long = "system-prompt",
+            value_name = "FILE",
+            help = "Path to file containing custom system prompt",
+            long_help = "Override the default system prompt with content from the specified file. This replaces the entire system prompt for this run."
+        )]
+        system_prompt_file: Option<PathBuf>,
     },
 
     /// Recipe utilities for validation and deeplinking
@@ -746,6 +764,7 @@ pub async fn cli() -> Result<()> {
             remote_extensions,
             streamable_http_extensions,
             builtins,
+            system_prompt_file,
         }) => {
             return match command {
                 Some(SessionCommand::List {
@@ -799,6 +818,7 @@ pub async fn cli() -> Result<()> {
                         builtins,
                         extensions_override: None,
                         additional_system_prompt: None,
+                        system_prompt_file,
                         settings: None,
                         provider: None,
                         model: None,
@@ -892,6 +912,7 @@ pub async fn cli() -> Result<()> {
             additional_sub_recipes,
             provider,
             model,
+            system_prompt_file,
         }) => {
             let (input_config, recipe_info) = match (instructions, input_text, recipe) {
                 (Some(file), _, _) if file == "-" => {
@@ -972,6 +993,7 @@ pub async fn cli() -> Result<()> {
                 builtins,
                 extensions_override: input_config.extensions_override,
                 additional_system_prompt: input_config.additional_system_prompt,
+                system_prompt_file,
                 settings: recipe_info
                     .as_ref()
                     .and_then(|r| r.session_settings.clone()),
@@ -1148,6 +1170,7 @@ pub async fn cli() -> Result<()> {
                     builtins: Vec::new(),
                     extensions_override: None,
                     additional_system_prompt: None,
+                    system_prompt_file: None,
                     settings: None::<SessionSettings>,
                     provider: None,
                     model: None,

@@ -37,6 +37,8 @@ pub struct SessionBuilderConfig {
     pub extensions_override: Option<Vec<ExtensionConfig>>,
     /// Any additional system prompt to append to the default
     pub additional_system_prompt: Option<String>,
+    /// Path to file containing custom system prompt to override the default
+    pub system_prompt_file: Option<std::path::PathBuf>,
     /// Settings to override the global Goose settings
     pub settings: Option<SessionSettings>,
     /// Provider override from CLI arguments
@@ -559,12 +561,47 @@ pub async fn build_session(session_config: SessionBuilderConfig) -> Session {
         session.agent.extend_system_prompt(additional_prompt).await;
     }
 
-    // Only override system prompt if a system override exists
-    let system_prompt_file: Option<String> = config.get_param("GOOSE_SYSTEM_PROMPT_FILE_PATH").ok();
-    if let Some(ref path) = system_prompt_file {
-        let override_prompt =
-            std::fs::read_to_string(path).expect("Failed to read system prompt file");
-        session.agent.override_system_prompt(override_prompt).await;
+    // Check for system prompt override from three sources (in priority order):
+    // 1. CLI parameter (highest priority)
+    // 2. Config file setting
+    // CLI parameter takes precedence over config file
+    // The custom prompt file can use the same template variables as the default prompts
+    if let Some(ref path) = session_config.system_prompt_file {
+        match std::fs::read_to_string(path) {
+            Ok(override_prompt_template) => {
+                // The custom prompt is a template that needs to be rendered with context
+                // We pass the raw template to the agent, which will render it with proper context
+                session.agent.override_system_prompt(override_prompt_template).await;
+            }
+            Err(e) => {
+                output::render_error(&format!(
+                    "Failed to read system prompt file '{}': {}",
+                    path.display(),
+                    e
+                ));
+                process::exit(1);
+            }
+        }
+    } else {
+        // Fall back to config file setting if no CLI parameter provided
+        let system_prompt_file: Option<String> = config.get_param("GOOSE_SYSTEM_PROMPT_FILE_PATH").ok();
+        if let Some(ref path) = system_prompt_file {
+            match std::fs::read_to_string(path) {
+                Ok(override_prompt_template) => {
+                    // The custom prompt is a template that needs to be rendered with context
+                    // We pass the raw template to the agent, which will render it with proper context
+                    session.agent.override_system_prompt(override_prompt_template).await;
+                }
+                Err(e) => {
+                    output::render_error(&format!(
+                        "Failed to read system prompt file '{}': {}",
+                        path,
+                        e
+                    ));
+                    process::exit(1);
+                }
+            }
+        }
     }
 
     // Display session information unless in quiet mode
@@ -596,6 +633,7 @@ mod tests {
             builtins: vec!["developer".to_string()],
             extensions_override: None,
             additional_system_prompt: Some("Test prompt".to_string()),
+            system_prompt_file: None,
             settings: None,
             provider: None,
             model: None,
