@@ -107,7 +107,6 @@ jobs:
             goose-*.tar.bz2
             goose-*.zip
             Goose*.zip
-            Goose*.tar.gz
             *.deb
             *.rpm
             download_cli.sh
@@ -126,7 +125,6 @@ jobs:
             goose-*.tar.bz2
             goose-*.zip
             Goose*.zip
-            Goose*.tar.gz
             *.deb
             *.rpm
             download_cli.sh
